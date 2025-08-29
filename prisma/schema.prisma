@@ -1,0 +1,113 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL") // file:./dev.db (default)
+}
+
+/**
+ * Minimal starter schema just to verify migrations work.
+ * We'll expand later (profiles, bookings, listings, etc.).
+ */
+
+enum Role {
+  OWNER
+  PROFESSIONAL
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         Role     @default(OWNER)
+  createdAt    DateTime @default(now())
+
+  ownerProfile OwnerProfile?
+  ProProfile   ProProfile?
+}
+
+model OwnerProfile {
+  id      String  @id @default(cuid())
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address String?
+  lat     Float?
+  lng     Float?
+
+  dogs Dog[]
+}
+
+model Dog {
+  id             String       @id @default(cuid())
+  ownerProfileId String
+  ownerProfile   OwnerProfile @relation(fields: [ownerProfileId], references: [id], onDelete: Cascade)
+
+  name      String
+  breed     String?
+  birthDate DateTime?
+  weightKg  Float?
+  photoUrl  String?
+  notes     String?
+}
+
+enum ServiceType {
+  DOG_WALKING
+  DOG_TRAINING
+  PHYSIOTHERAPY
+  VET
+  DAYCARE
+  DOG_PENSION
+}
+
+model ProProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String?
+  rating       Float   @default(0)
+  reviewCount  Int     @default(0)
+  location     String?
+  lat          Float?
+  lng          Float?
+  licenseUrl   String?
+  insuranceUrl String?
+
+  services ProService[]
+  listings Listing[]
+}
+
+model ProService {
+  id      String      @id @default(cuid())
+  proId   String
+  pro     ProProfile  @relation(fields: [proId], references: [id], onDelete: Cascade)
+  service ServiceType
+
+  @@unique([proId, service])
+}
+
+model Listing {
+  id             String      @id @default(cuid())
+  proId          String
+  pro            ProProfile  @relation(fields: [proId], references: [id], onDelete: Cascade)
+  service        ServiceType
+  title          String
+  description    String
+  basePriceCents Int
+  durationMin    Int
+  location       String?
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  provider          String
+  providerSessionId String?  @unique
+  amountCents       Int
+  currency          String   @default("EUR")
+  status            String
+  createdAt         DateTime @default(now())
+}
